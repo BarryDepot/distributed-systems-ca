@@ -10,7 +10,7 @@ service SafetyMonitorService {
   rpc StreamSafetyAlerts (AlertRequest) returns (stream AlertUpdate);
 }
 
-// Used by CheckLocationSafety
+// request and response for CheckLocationSafety
 message SafetyRequest {
   string locationId = 1;        // e.g. "MAYO_CASTLEBAR_ZONE3"
   string userId = 2;
@@ -22,7 +22,7 @@ message SafetyResponse {
   bool isSafe = 3;
 }
 
-// Used by StreamSafetyAlerts
+// reqquest and stream response for StreamSafetyAlerts
 message AlertRequest {
   string regionId = 1;
   int32 severityThreshold = 2;

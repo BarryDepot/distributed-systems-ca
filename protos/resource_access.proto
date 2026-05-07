@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package resourceaccess;
 
-// resource access service - client streaming
+// reesource Access service
+// user submits a batch of help requests (legal, health, or education)
+// server replies once at the end with a summary of how the batch went
 service ResourceAccessService {
   rpc UploadResourceRequests (stream ResourceRequest) returns (ResourceSummary);
 }
@@ -10,12 +12,12 @@ service ResourceAccessService {
 message ResourceRequest {
   string requestId = 1;
   string userId = 2;
-  string resourceType = 3;
+  string resourceType = 3;      // legal / health / education
   string description = 4;
 }
 
 message ResourceSummary {
-  int32 totalRequests = 1;
-  int32 processedCount = 2;
+  int32 totalRequests = 1;      // how many came in
+  int32 processedCount = 2;     // how many were accepted
   string statusMessage = 3;
 }
