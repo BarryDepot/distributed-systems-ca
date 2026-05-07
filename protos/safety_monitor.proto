@@ -2,35 +2,35 @@ syntax = "proto3";
 
 package safetymonitor;
 
-// safety monitor service - unary + server streaming
+// Safety Monitor service.
+// one unary RPC for a quick zone check, and a server-streaming RPC
+// for ongoing alerts in a wider region.
 service SafetyMonitorService {
   rpc CheckLocationSafety (SafetyRequest) returns (SafetyResponse);
   rpc StreamSafetyAlerts (AlertRequest) returns (stream AlertUpdate);
 }
 
+// Used by CheckLocationSafety
 message SafetyRequest {
-  string locationId = 1;
+  string locationId = 1;        // e.g. "MAYO_CASTLEBAR_ZONE3"
   string userId = 2;
 }
 
 message SafetyResponse {
-  int safetyLevel = 1;
+  int32 safetyLevel = 1;        // 1 (very safe) to 5 (high risk)
   string alertMessage = 2;
   bool isSafe = 3;
 }
 
+// Used by StreamSafetyAlerts
 message AlertRequest {
   string regionId = 1;
-  int severityThreshold = 2;
+  int32 severityThreshold = 2;
 }
-
 
 message AlertUpdate {
   string alertId = 1;
   string timestamp = 2;
   string description = 3;
-  int severity = 4;
+  int32 severity = 4;
 }
-
-
-
