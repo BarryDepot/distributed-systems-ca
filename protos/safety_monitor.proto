@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package safetymonitor;
+
+// safety monitor service - unary + server streaming
+service SafetyMonitorService {
+  rpc CheckLocationSafety (SafetyRequest) returns (SafetyResponse);
+  rpc StreamSafetyAlerts (AlertRequest) returns (stream AlertUpdate);
+}
+
+message SafetyRequest {
+  string locationId = 1;
+  string userId = 2;
+}
+
+message SafetyResponse {
+  int safetyLevel = 1;
+  string alertMessage = 2;
+  bool isSafe = 3;
+}
+
+message AlertRequest {
+  string regionId = 1;
+  int severityThreshold = 2;
+}
+
+
+message AlertUpdate {
+  string alertId = 1;
+  string timestamp = 2;
+  string description = 3;
+  int severity = 4;
+}
+
+
+
