@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package incidentreporting;
+
+// Incident Reporting service.
+// Bidirectional chat - both the user and the support officer
+// can send and receive messages on the same open call.
+service IncidentReportingService {
+  rpc ReportIncident (stream IncidentMessage) returns (stream IncidentMessage);
+}
+
+message IncidentMessage {
+  string senderId = 1;
+  string content = 2;
+  string timestamp = 3;
+  string messageType = 4;       // "report", "response", "update", or "closure"
+}
