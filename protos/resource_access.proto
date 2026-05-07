@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package resourceaccess;
+
+// resource access service - client streaming
+service ResourceAccessService {
+  rpc UploadResourceRequests (stream ResourceRequest) returns (ResourceSummary);
+}
+
+message ResourceRequest {
+  string requestId = 1;
+  string userId = 2;
+  string resourceType = 3;
+  string description = 4;
+}
+
+message ResourceSummary {
+  int32 totalRequests = 1;
+  int32 processedCount = 2;
+  string statusMessage = 3;
+}
