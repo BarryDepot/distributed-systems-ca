@@ -1,0 +1,13 @@
+{
+  "name": "distributed-systems-ca",
+  "version": "1.0.0",
+  "description": "SHE - Secure Help Empower distributed system project",
+  "main": "verify_protos.js",
+  "scripts": {
+    "verify": "node verify_protos.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.0",
+    "@grpc/proto-loader": "^0.8.0"
+  }
+}
