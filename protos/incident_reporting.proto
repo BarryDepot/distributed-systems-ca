@@ -10,8 +10,8 @@ service IncidentReportingService {
 }
 
 message IncidentMessage {
-  string senderId = 1;
+  string senderId = 1;          // user or officer id, e.g. "USER_00452" / "OFFICER_07"
   string content = 2;
-  string timestamp = 3;
+  string timestamp = 3;          // ISO 8601
   string messageType = 4;       // "report", "response", "update", or "closure"
 }

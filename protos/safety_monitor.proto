@@ -13,7 +13,7 @@ service SafetyMonitorService {
 // request and response for CheckLocationSafety
 message SafetyRequest {
   string locationId = 1;        // e.g. "MAYO_CASTLEBAR_ZONE3"
-  string userId = 2;
+  string userId = 2;            // e.g. "USER_00452"
 }
 
 message SafetyResponse {
@@ -30,7 +30,7 @@ message AlertRequest {
 
 message AlertUpdate {
   string alertId = 1;
-  string timestamp = 2;
+  string timestamp = 2;         // ISO 8601, e.g. "2026-05-01T22:15:00Z"
   string description = 3;
-  int32 severity = 4;
+  int32 severity = 4;            // 1 (low) to 5 (critical)
 }
