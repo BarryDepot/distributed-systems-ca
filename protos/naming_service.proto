@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package namingservice;
+
+// The 3 main services register themselves with this service when they start up clients (including the GUI) look up where a service is running by its name
+
+service NamingService {
+  rpc Register (ServiceInfo) returns (RegisterReply);
+  rpc Lookup (LookupRequest) returns (ServiceInfo);
+}
+
+message ServiceInfo {
+  string serviceName = 1;       // e.g. "SafetyMonitorService"
+  string host = 2;              // e.g. "localhost"
+  int32 port = 3;               // e.g. 50051
+  string registeredAt = 4;      // ISO 8601
+}
+
+message RegisterReply {
+  bool ok = 1;
+  string message = 2;
+}
+
+message LookupRequest {
+  string serviceName = 1;
+}

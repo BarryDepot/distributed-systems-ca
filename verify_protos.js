@@ -8,9 +8,10 @@ const protos = [
   'safety_monitor.proto',
   'resource_access.proto',
   'incident_reporting.proto',
+  'naming_service.proto',
 ];
 
-console.log('Verifying proto files...');
+console.log('Verifying proto files');
 
 protos.forEach((file) => {
   const def = protoLoader.loadSync(path.join(__dirname, 'protos', file), {
@@ -24,4 +25,4 @@ protos.forEach((file) => {
   console.log(`  ${file} - OK`);
 });
 
-console.log('All protos loaded successfully.');
+console.log('All protos loaded successfully');
