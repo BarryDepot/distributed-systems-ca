@@ -45,9 +45,20 @@ function register(call, callback) {
 }
 
 // Lookup
+// this is called to find where a service is running
 function lookup(call, callback) {
-  console.log('Lookup called with:', call.request);
-  callback(null, { serviceName: '', host: '', port: 0, registeredAt: '' });
+  const name = call.request.serviceName;
+  const info = registry.get(name);
+
+  if (!info) {
+    return callback({
+      code: grpc.status.NOT_FOUND,
+      message: 'Service not registered: ' + name,
+    });
+  }
+
+  console.log('Lookup found:', name);
+  callback(null, info);
 }
 
 // set up the server
