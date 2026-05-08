@@ -30,6 +30,16 @@ const zoneData = {
   GALWAY_WESTSIDE: { level: 1, note: 'No issues reported' },
 };
 
+// sample text of alert
+const alertTemplates = [
+  'Suspicious activity reported',
+  'Increased foot traffic',
+  'Streetlight outage',
+  'Loud noise complaint',
+  'Group gathering reported',
+  'Vehicle parked unusually',
+];
+
 // CheckLocationSafety
 // this looks up the safety level for a zone and returns the current status
 function checkLocationSafety(call, callback) {
@@ -54,10 +64,87 @@ function checkLocationSafety(call, callback) {
   });
 }
 
-// StreamSafetyAlerts - stub for now
+// StreamSafetyAlerts
+// keeps pushing alerts to the client at intervals
+// only sends ones at or above the severity threshold
 function streamSafetyAlerts(call) {
-  console.log('StreamSafetyAlerts called with:', call.request);
-  call.end();
+  const { regionId, severityThreshold } = call.request;
+  console.log(
+    'Streaming alerts for',
+    regionId,
+    '(min severity',
+    severityThreshold + ')',
+  );
+
+  let counter = 1;
+
+  // push a new alert every 2 seconds
+  const interval = setInterval(() => {
+    const severity = Math.floor(Math.random() * 5) + 1;
+
+    // skip alerts below the threshold
+    if (severity < severityThreshold) {
+      return;
+    }
+
+    const alert = {
+      alertId: 'ALT_' + (1000 + counter),
+      timestamp: new Date().toISOString(),
+      description:
+        alertTemplates[Math.floor(Math.random() * alertTemplates.length)] +
+        ' near ' +
+        regionId,
+      severity: severity,
+    };
+
+    call.write(alert);
+    counter++;
+  }, 2000);
+
+  // stop the stream when the client disconnects or cancels
+  call.on('cancelled', () => {
+    console.log('Stream cancelled by client');
+    clearInterval(interval);
+  });
+}
+
+// registering this service with the naming service so clients can discover
+function registerWithNamingService() {
+  const namingPath = path.join(
+    __dirname,
+    '..',
+    '..',
+    'protos',
+    'naming_service.proto',
+  );
+  const namingDef = protoLoader.loadSync(namingPath, {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true,
+  });
+  const namingProto = grpc.loadPackageDefinition(namingDef).namingservice;
+
+  const namingClient = new namingProto.NamingService(
+    'localhost:50050',
+    grpc.credentials.createInsecure(),
+  );
+
+  const myInfo = {
+    serviceName: 'SafetyMonitorService',
+    host: 'localhost',
+    port: 50051,
+    registeredAt: new Date().toISOString(),
+  };
+
+  namingClient.Register(myInfo, (err, reply) => {
+    if (err) {
+      console.error('Could not register with naming service:', err.message);
+      return;
+    }
+    console.log('Registered with naming service:', reply.message);
+  });
 }
 
 // sets up the server
@@ -68,11 +155,12 @@ server.addService(safetyProto.SafetyMonitorService.service, {
   StreamSafetyAlerts: streamSafetyAlerts,
 });
 
-// start server
+// starts server
 server.bindAsync(
   '0.0.0.0:50051',
   grpc.ServerCredentials.createInsecure(),
   () => {
     console.log('Safety Monitor service running on port 50051');
+    registerWithNamingService();
   },
 );
