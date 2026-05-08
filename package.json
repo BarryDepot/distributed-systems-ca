@@ -9,7 +9,8 @@
     "naming-test": "node naming-service/test_client.js",
     "safety-monitor": "node services/safety-monitor/safety_monitor_server.js",
     "safety-test": "node services/safety-monitor/test_client.js",
-    "resource-access": "node services/resource-access/resource_access_server.js"
+    "resource-access": "node services/resource-access/resource_access_server.js",
+    "resource-test": "node services/resource-access/test_client.js"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.0",
