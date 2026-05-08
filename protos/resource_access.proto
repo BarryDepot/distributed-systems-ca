@@ -10,8 +10,8 @@ service ResourceAccessService {
 }
 
 message ResourceRequest {
-  string requestId = 1;
-  string userId = 2;
+  string requestId = 1;         // e.g. "REQ_001"
+  string userId = 2;            // e.g. "USER_00452"
   string resourceType = 3;      // legal / health / education
   string description = 4;
 }

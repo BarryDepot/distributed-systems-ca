@@ -24,12 +24,12 @@ message SafetyResponse {
 
 // reqquest and stream response for StreamSafetyAlerts
 message AlertRequest {
-  string regionId = 1;
+  string regionId = 1;          // e.g. "MAYO_NORTH"
   int32 severityThreshold = 2;
 }
 
 message AlertUpdate {
-  string alertId = 1;
+  string alertId = 1;           // e.g. "ALT_9921"
   string timestamp = 2;         // ISO 8601, e.g. "2026-05-01T22:15:00Z"
   string description = 3;
   int32 severity = 4;            // 1 (low) to 5 (critical)
