@@ -6,7 +6,8 @@
   "scripts": {
     "verify": "node verify_protos.js",
     "naming": "node naming-service/naming_server.js",
-    "naming-test": "node naming-service/test_client.js"
+    "naming-test": "node naming-service/test_client.js",
+    "safety-monitor": "node services/safety-monitor/safety_monitor_server.js"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.0",
