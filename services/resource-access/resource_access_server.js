@@ -22,20 +22,54 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 const resourceProto =
   grpc.loadPackageDefinition(packageDefinition).resourceaccess;
 
-// UploadResourceRequests - stub for now
+// allowed resource categories
+const validCategories = ['legal', 'health', 'education'];
+
+// UploadResourceRequests
+// user sends multiple help requests & server replies once at the end
 function uploadResourceRequests(call, callback) {
-  console.log('UploadResourceRequests called');
+  let total = 0;
+  let processed = 0;
+  const byCategory = { legal: 0, health: 0, education: 0 };
 
   call.on('data', (req) => {
-    console.log('Got request:', req);
+    total++;
+    console.log('Got request:', req.requestId, '-', req.resourceType);
+
+    const type = (req.resourceType || '').toLowerCase();
+    if (validCategories.includes(type)) {
+      byCategory[type]++;
+      processed++;
+    } else {
+      console.log('  skipped (unknown type)');
+    }
   });
 
   call.on('end', () => {
+    const summary =
+      'Processed ' +
+      processed +
+      ' of ' +
+      total +
+      ' requests (legal: ' +
+      byCategory.legal +
+      ', health: ' +
+      byCategory.health +
+      ', education: ' +
+      byCategory.education +
+      ')';
+
+    console.log('Batch finished:', summary);
+
     callback(null, {
-      totalRequests: 0,
-      processedCount: 0,
-      statusMessage: 'not implemented yet',
+      totalRequests: total,
+      processedCount: processed,
+      statusMessage: summary,
     });
+  });
+
+  call.on('error', (err) => {
+    console.error('Stream error:', err.message);
   });
 }
 
