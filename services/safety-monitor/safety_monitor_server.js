@@ -21,13 +21,36 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 
 const safetyProto = grpc.loadPackageDefinition(packageDefinition).safetymonitor;
 
-// CheckLocationSafety - stub for now
+// fake safety data for some zones
+// in real circumstances then this would come from a database or sensor feed
+const zoneData = {
+  MAYO_CASTLEBAR_ZONE3: { level: 2, note: 'Quiet area, well-lit streets' },
+  MAYO_NORTH: { level: 3, note: 'Some recent reports of suspicious activity' },
+  DUBLIN_CITY_CENTRE: { level: 4, note: 'High incident rate tonight' },
+  GALWAY_WESTSIDE: { level: 1, note: 'No issues reported' },
+};
+
+// CheckLocationSafety
+// this looks up the safety level for a zone and returns the current status
 function checkLocationSafety(call, callback) {
-  console.log('CheckLocationSafety called with:', call.request);
+  const { locationId, userId } = call.request;
+  console.log('Safety check for', userId, 'in', locationId);
+
+  const data = zoneData[locationId];
+
+  // if we don't know the zone, return an unknown reading
+  if (!data) {
+    return callback(null, {
+      safetyLevel: 3,
+      alertMessage: 'No data for this zone yet',
+      isSafe: false,
+    });
+  }
+
   callback(null, {
-    safetyLevel: 0,
-    alertMessage: 'not implemented yet',
-    isSafe: false,
+    safetyLevel: data.level,
+    alertMessage: data.note,
+    isSafe: data.level <= 2,
   });
 }
 
