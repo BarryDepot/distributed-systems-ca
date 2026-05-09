@@ -13,15 +13,76 @@
       h1 {
         color: #4a3f6e;
       }
-      .placeholder {
-        color: #888;
-        font-style: italic;
+      section {
+        border: 1px solid #ddd;
+        padding: 16px;
+        margin-bottom: 20px;
+        border-radius: 6px;
+      }
+      label {
+        display: block;
+        margin: 8px 0;
+      }
+      input {
+        padding: 6px;
+        width: 250px;
+      }
+      button {
+        padding: 8px 14px;
+        margin-top: 10px;
+        cursor: pointer;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 10px;
+        border-radius: 4px;
+        white-space: pre-wrap;
       }
     </style>
   </head>
   <body>
     <h1>SHE - Secure Help Empower</h1>
     <p>Distributed safety and support services. Powered by gRPC.</p>
-    <p class="placeholder">Service controls will be added here.</p>
+
+    <section>
+      <h2>Safety Monitor - Check Location</h2>
+      <form id="safety-form">
+        <label
+          >Location ID:
+          <input type="text" id="locationId" value="MAYO_CASTLEBAR_ZONE3" />
+        </label>
+        <label
+          >User ID:
+          <input type="text" id="userId" value="USER_00452" />
+        </label>
+        <button type="submit">Check Safety</button>
+      </form>
+      <pre id="safety-result"></pre>
+    </section>
+
+    <script>
+      document
+        .getElementById('safety-form')
+        .addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const locationId = document.getElementById('locationId').value;
+          const userId = document.getElementById('userId').value;
+
+          const resultEl = document.getElementById('safety-result');
+          resultEl.textContent = 'Checking...';
+
+          try {
+            const res = await fetch('/api/safety/check', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ locationId, userId }),
+            });
+            const data = await res.json();
+            resultEl.textContent = JSON.stringify(data, null, 2);
+          } catch (err) {
+            resultEl.textContent = 'Error: ' + err.message;
+          }
+        });
+    </script>
   </body>
 </html>
