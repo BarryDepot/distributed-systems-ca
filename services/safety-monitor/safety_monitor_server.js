@@ -41,9 +41,18 @@ const alertTemplates = [
 ];
 
 // CheckLocationSafety
-// this looks up the safety level for a zone and returns the current status
+// looks up the safety level for a zone and returns the current status
 function checkLocationSafety(call, callback) {
   const { locationId, userId } = call.request;
+
+  // validate required fields
+  if (!locationId || !userId) {
+    return callback({
+      code: grpc.status.INVALID_ARGUMENT,
+      message: 'locationId and userId are both required',
+    });
+  }
+
   console.log('Safety check for', userId, 'in', locationId);
 
   const data = zoneData[locationId];

@@ -26,15 +26,23 @@ const resourceProto =
 const validCategories = ['legal', 'health', 'education'];
 
 // UploadResourceRequests
-// user sends multiple help requests & server replies once at the end
+// user sends multiple help requests - server replies once at the end
 function uploadResourceRequests(call, callback) {
   let total = 0;
   let processed = 0;
+  let invalid = 0;
   const byCategory = { legal: 0, health: 0, education: 0 };
 
   call.on('data', (req) => {
     total++;
     console.log('Got request:', req.requestId, '-', req.resourceType);
+
+    // validate required fields - skip but count
+    if (!req.requestId || !req.userId || !req.resourceType) {
+      console.log('  invalid - missing fields');
+      invalid++;
+      return;
+    }
 
     const type = (req.resourceType || '').toLowerCase();
     if (validCategories.includes(type)) {
@@ -57,6 +65,7 @@ function uploadResourceRequests(call, callback) {
       byCategory.health +
       ', education: ' +
       byCategory.education +
+      (invalid > 0 ? ', invalid: ' + invalid : '') +
       ')';
 
     console.log('Batch finished:', summary);

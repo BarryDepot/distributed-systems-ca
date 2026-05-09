@@ -26,6 +26,31 @@ function loadProto(filename) {
   return grpc.loadPackageDefinition(def);
 }
 
+// helper - build a deadline N seconds from now
+function deadlineIn(seconds) {
+  const d = new Date();
+  d.setSeconds(d.getSeconds() + seconds);
+  return d;
+}
+
+// helper - map a gRPC error code to a sensible HTTP status
+function grpcErrorToHttpStatus(err) {
+  switch (err.code) {
+    case grpc.status.INVALID_ARGUMENT:
+      return 400;
+    case grpc.status.NOT_FOUND:
+      return 404;
+    case grpc.status.DEADLINE_EXCEEDED:
+      return 504;
+    case grpc.status.UNAUTHENTICATED:
+      return 401;
+    case grpc.status.UNAVAILABLE:
+      return 503;
+    default:
+      return 500;
+  }
+}
+
 const namingPkg = loadProto('naming_service.proto');
 const safetyPkg = loadProto('safety_monitor.proto');
 const resourcePkg = loadProto('resource_access.proto');
@@ -37,13 +62,16 @@ const namingClient = new namingPkg.namingservice.NamingService(
   grpc.credentials.createInsecure(),
 );
 
-// helper - lookup a service in the naming service and return its address
 function lookupService(serviceName) {
   return new Promise((resolve, reject) => {
-    namingClient.Lookup({ serviceName }, (err, info) => {
-      if (err) return reject(err);
-      resolve(info.host + ':' + info.port);
-    });
+    namingClient.Lookup(
+      { serviceName },
+      { deadline: deadlineIn(3) },
+      (err, info) => {
+        if (err) return reject(err);
+        resolve(info.host + ':' + info.port);
+      },
+    );
   });
 }
 
@@ -52,13 +80,21 @@ let safetyClient;
 let resourceClient;
 let incidentClient;
 
-// check location safety (unary)
 app.post('/api/safety/check', (req, res) => {
   const { locationId, userId } = req.body;
-  safetyClient.CheckLocationSafety({ locationId, userId }, (err, response) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(response);
-  });
+  safetyClient.CheckLocationSafety(
+    { locationId, userId },
+    { deadline: deadlineIn(5) },
+    (err, response) => {
+      if (err) {
+        return res.status(grpcErrorToHttpStatus(err)).json({
+          error: err.message,
+          code: err.code,
+        });
+      }
+      res.json(response);
+    },
+  );
 });
 
 // stream safety alerts via SSE
@@ -87,13 +123,20 @@ app.get('/api/safety/alerts', (req, res) => {
   req.on('close', () => stream.cancel());
 });
 
-// submit a batch of help requests (client streaming)
 app.post('/api/resource/submit', (req, res) => {
   const requests = req.body.requests || [];
-  const call = resourceClient.UploadResourceRequests((err, response) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(response);
-  });
+  const call = resourceClient.UploadResourceRequests(
+    { deadline: deadlineIn(10) },
+    (err, response) => {
+      if (err) {
+        return res.status(grpcErrorToHttpStatus(err)).json({
+          error: err.message,
+          code: err.code,
+        });
+      }
+      res.json(response);
+    },
+  );
   requests.forEach((r) => call.write(r));
   call.end();
 });

@@ -70,6 +70,18 @@ function reportIncident(call) {
   console.log('ReportIncident - new chat session opened');
 
   call.on('data', (userMsg) => {
+    // validate required fields
+    if (!userMsg.senderId || !userMsg.content) {
+      console.log('  invalid message - missing fields');
+      call.write({
+        senderId: 'OFFICER_07',
+        content: 'Error: senderId and content are required',
+        timestamp: new Date().toISOString(),
+        messageType: 'error',
+      });
+      return;
+    }
+
     console.log('User:', userMsg.content);
 
     const reply = officerReply(userMsg);

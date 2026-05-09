@@ -94,6 +94,72 @@
       <ul id="alerts-list" class="alerts"></ul>
     </section>
 
+    <section>
+      <h2>Resource Access - Submit Help Requests</h2>
+      <form id="add-request-form">
+        <label
+          >Resource Type:
+          <select id="resourceType">
+            <option value="legal">Legal</option>
+            <option value="health">Health</option>
+            <option value="education">Education</option>
+          </select>
+        </label>
+        <label
+          >Description:
+          <input
+            type="text"
+            id="description"
+            placeholder="e.g. Need help with a protection order"
+          />
+        </label>
+        <button type="submit">Add to batch</button>
+      </form>
+
+      <h3>Requests in batch:</h3>
+      <ul id="batch-list"></ul>
+
+      <button id="submit-batch" disabled>Submit batch</button>
+      <pre id="batch-result"></pre>
+    </section>
+
+    <section>
+      <h2>Incident Reporting - Live Chat</h2>
+      <div>Status: <span id="chat-status">Disconnected</span></div>
+      <div style="margin-top: 10px">
+        <button id="chat-connect">Open chat</button>
+        <button id="chat-disconnect" disabled>Close chat</button>
+      </div>
+      <div
+        id="chat-log"
+        style="
+          border: 1px solid #ddd;
+          padding: 10px;
+          height: 200px;
+          overflow-y: auto;
+          margin: 10px 0;
+          background: #fafafa;
+        "
+      ></div>
+      <form id="chat-form">
+        <label
+          >Message type:
+          <select id="messageType">
+            <option value="report">Report</option>
+            <option value="update">Update</option>
+            <option value="closure">Closure</option>
+          </select>
+        </label>
+        <input
+          type="text"
+          id="chat-input"
+          placeholder="Type your message..."
+          style="width: 350px"
+        />
+        <button type="submit">Send</button>
+      </form>
+    </section>
+
     <script>
       // unary safety check
       document
@@ -113,7 +179,15 @@
               body: JSON.stringify({ locationId, userId }),
             });
             const data = await res.json();
-            resultEl.textContent = JSON.stringify(data, null, 2);
+            if (!res.ok) {
+              resultEl.textContent =
+                'Error (' +
+                res.status +
+                '): ' +
+                (data.error || 'Unknown error');
+            } else {
+              resultEl.textContent = JSON.stringify(data, null, 2);
+            }
           } catch (err) {
             resultEl.textContent = 'Error: ' + err.message;
           }
@@ -169,6 +243,131 @@
         alertSource = null;
         startBtn.disabled = false;
         stopBtn.disabled = true;
+      });
+      // resource access - client streaming
+      const batch = [];
+      let nextId = 1;
+
+      document
+        .getElementById('add-request-form')
+        .addEventListener('submit', (e) => {
+          e.preventDefault();
+          const resourceType = document.getElementById('resourceType').value;
+          const description = document.getElementById('description').value;
+
+          if (!description) return;
+
+          const req = {
+            requestId: 'REQ_' + String(nextId).padStart(3, '0'),
+            userId: 'USER_00452',
+            resourceType,
+            description,
+          };
+          nextId++;
+
+          batch.push(req);
+
+          const li = document.createElement('li');
+          li.textContent =
+            req.requestId + ' - ' + req.resourceType + ' - ' + req.description;
+          document.getElementById('batch-list').appendChild(li);
+
+          document.getElementById('description').value = '';
+          document.getElementById('submit-batch').disabled = false;
+        });
+
+      document
+        .getElementById('submit-batch')
+        .addEventListener('click', async () => {
+          const resultEl = document.getElementById('batch-result');
+          resultEl.textContent = 'Submitting...';
+
+          try {
+            const res = await fetch('/api/resource/submit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ requests: batch }),
+            });
+            const data = await res.json();
+            resultEl.textContent = JSON.stringify(data, null, 2);
+
+            // clear the batch for the next round
+            batch.length = 0;
+            nextId = 1;
+            document.getElementById('batch-list').innerHTML = '';
+            document.getElementById('submit-batch').disabled = true;
+          } catch (err) {
+            resultEl.textContent = 'Error: ' + err.message;
+          }
+        });
+
+      // incident reporting - bidirectional via WebSocket
+      let chatSocket = null;
+      const chatStatus = document.getElementById('chat-status');
+      const chatLog = document.getElementById('chat-log');
+      const connectBtn = document.getElementById('chat-connect');
+      const disconnectBtn = document.getElementById('chat-disconnect');
+
+      function addChatLine(text) {
+        const line = document.createElement('div');
+        line.textContent = text;
+        chatLog.appendChild(line);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      connectBtn.addEventListener('click', () => {
+        if (chatSocket) return;
+
+        chatSocket = new WebSocket('ws://localhost:3000/api/incident/chat');
+
+        chatSocket.onopen = () => {
+          chatStatus.textContent = 'Connected';
+          addChatLine('-- chat opened --');
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+        };
+
+        chatSocket.onmessage = (event) => {
+          const msg = JSON.parse(event.data);
+          addChatLine('Officer: ' + msg.content);
+        };
+
+        chatSocket.onclose = () => {
+          chatStatus.textContent = 'Disconnected';
+          addChatLine('-- chat closed --');
+          chatSocket = null;
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+        };
+      });
+
+      disconnectBtn.addEventListener('click', () => {
+        if (chatSocket) chatSocket.close();
+      });
+
+      document.getElementById('chat-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
+          addChatLine('-- not connected. click "Open chat" first --');
+          return;
+        }
+
+        const content = document.getElementById('chat-input').value;
+        if (!content) return;
+
+        const messageType = document.getElementById('messageType').value;
+
+        const msg = {
+          senderId: 'USER_00452',
+          content,
+          timestamp: new Date().toISOString(),
+          messageType,
+        };
+
+        chatSocket.send(JSON.stringify(msg));
+        addChatLine('You: ' + content);
+        document.getElementById('chat-input').value = '';
       });
     </script>
   </body>
