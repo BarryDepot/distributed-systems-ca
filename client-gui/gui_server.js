@@ -6,10 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
-// serve static files (HTML, CSS, JS) from the public folder
 app.use(express.static(path.join(__dirname, 'public')));
-
-// for parsing JSON bodies sent from the frontend
 app.use(express.json());
 
 // load safety monitor proto and connect to the service
@@ -33,7 +30,7 @@ const safetyClient = new safetyProto.SafetyMonitorService(
   grpc.credentials.createInsecure(),
 );
 
-// API route: check location safety
+// check location safety (unary)
 app.post('/api/safety/check', (req, res) => {
   const { locationId, userId } = req.body;
 
@@ -45,7 +42,44 @@ app.post('/api/safety/check', (req, res) => {
   });
 });
 
-// start the server
+// stream safety alerts via Server-Sent Events
+app.get('/api/safety/alerts', (req, res) => {
+  const regionId = req.query.regionId || 'MAYO_NORTH';
+  const severityThreshold = parseInt(req.query.severityThreshold) || 1;
+
+  // SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  // open the gRPC stream
+  const stream = safetyClient.StreamSafetyAlerts({
+    regionId,
+    severityThreshold,
+  });
+
+  stream.on('data', (alert) => {
+    // forward each alert to the browser
+    res.write('data: ' + JSON.stringify(alert) + '\n\n');
+  });
+
+  stream.on('error', (err) => {
+    if (err.code !== grpc.status.CANCELLED) {
+      console.error('Stream error:', err.message);
+    }
+    res.end();
+  });
+
+  stream.on('end', () => {
+    res.end();
+  });
+
+  // if the browser disconnects, cancel the gRPC stream
+  req.on('close', () => {
+    stream.cancel();
+  });
+});
+
 app.listen(PORT, () => {
   console.log('GUI server running on http://localhost:' + PORT);
 });

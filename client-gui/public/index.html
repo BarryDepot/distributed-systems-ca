@@ -38,6 +38,17 @@
         border-radius: 4px;
         white-space: pre-wrap;
       }
+      ul.alerts {
+        list-style: none;
+        padding: 0;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      ul.alerts li {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
@@ -60,7 +71,31 @@
       <pre id="safety-result"></pre>
     </section>
 
+    <section>
+      <h2>Safety Monitor - Live Alerts</h2>
+      <form id="alerts-form">
+        <label
+          >Region ID:
+          <input type="text" id="regionId" value="MAYO_NORTH" />
+        </label>
+        <label
+          >Min Severity (1-5):
+          <input
+            type="number"
+            id="severityThreshold"
+            value="3"
+            min="1"
+            max="5"
+          />
+        </label>
+        <button type="submit" id="alerts-start">Start Alerts</button>
+        <button type="button" id="alerts-stop" disabled>Stop</button>
+      </form>
+      <ul id="alerts-list" class="alerts"></ul>
+    </section>
+
     <script>
+      // unary safety check
       document
         .getElementById('safety-form')
         .addEventListener('submit', async (e) => {
@@ -83,6 +118,58 @@
             resultEl.textContent = 'Error: ' + err.message;
           }
         });
+
+      // streaming alerts via SSE
+      let alertSource = null;
+      const startBtn = document.getElementById('alerts-start');
+      const stopBtn = document.getElementById('alerts-stop');
+      const list = document.getElementById('alerts-list');
+
+      document.getElementById('alerts-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const regionId = document.getElementById('regionId').value;
+        const severityThreshold =
+          document.getElementById('severityThreshold').value;
+
+        if (alertSource) alertSource.close();
+        list.innerHTML = '';
+
+        alertSource = new EventSource(
+          '/api/safety/alerts?regionId=' +
+            encodeURIComponent(regionId) +
+            '&severityThreshold=' +
+            encodeURIComponent(severityThreshold),
+        );
+
+        alertSource.onmessage = (event) => {
+          const alert = JSON.parse(event.data);
+          const li = document.createElement('li');
+          li.textContent =
+            '[severity ' +
+            alert.severity +
+            '] ' +
+            alert.description +
+            ' (' +
+            alert.timestamp +
+            ')';
+          list.prepend(li);
+        };
+
+        alertSource.onerror = () => {
+          alertSource.close();
+        };
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      });
+
+      stopBtn.addEventListener('click', () => {
+        if (alertSource) alertSource.close();
+        alertSource = null;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      });
     </script>
   </body>
 </html>
