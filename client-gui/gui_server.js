@@ -51,6 +51,19 @@ function grpcErrorToHttpStatus(err) {
   }
 }
 
+// shared token between the gui and all services - in production this would
+// come from a real auth system (JWT, OAuth, etc.)
+const AUTH_TOKEN = 'she-demo-token-2026';
+
+// build metadata for outgoing calls - auth token plus tracking info
+function buildMetadata(userId) {
+  const md = new grpc.Metadata();
+  md.set('auth-token', AUTH_TOKEN);
+  md.set('user-id', userId || 'unknown');
+  md.set('request-id', 'REQ-' + Date.now());
+  return md;
+}
+
 const namingPkg = loadProto('naming_service.proto');
 const safetyPkg = loadProto('safety_monitor.proto');
 const resourcePkg = loadProto('resource_access.proto');
@@ -84,6 +97,7 @@ app.post('/api/safety/check', (req, res) => {
   const { locationId, userId } = req.body;
   safetyClient.CheckLocationSafety(
     { locationId, userId },
+    buildMetadata(userId),
     { deadline: deadlineIn(5) },
     (err, response) => {
       if (err) {
@@ -106,10 +120,10 @@ app.get('/api/safety/alerts', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  const stream = safetyClient.StreamSafetyAlerts({
-    regionId,
-    severityThreshold,
-  });
+  const stream = safetyClient.StreamSafetyAlerts(
+    { regionId, severityThreshold },
+    buildMetadata('alerts-subscriber'),
+  );
 
   stream.on('data', (alert) => {
     res.write('data: ' + JSON.stringify(alert) + '\n\n');
@@ -126,6 +140,7 @@ app.get('/api/safety/alerts', (req, res) => {
 app.post('/api/resource/submit', (req, res) => {
   const requests = req.body.requests || [];
   const call = resourceClient.UploadResourceRequests(
+    buildMetadata('batch-uploader'),
     { deadline: deadlineIn(10) },
     (err, response) => {
       if (err) {
@@ -150,7 +165,7 @@ const wss = new WebSocket.Server({ server, path: '/api/incident/chat' });
 wss.on('connection', (ws) => {
   console.log('Chat client connected');
 
-  const grpcCall = incidentClient.ReportIncident();
+  const grpcCall = incidentClient.ReportIncident(buildMetadata('chat-user'));
 
   grpcCall.on('data', (msg) => ws.send(JSON.stringify(msg)));
   grpcCall.on('end', () => ws.close());
