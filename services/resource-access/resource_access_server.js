@@ -73,6 +73,45 @@ function uploadResourceRequests(call, callback) {
   });
 }
 
+// register this service with the naming service so clients can discover us
+function registerWithNamingService() {
+  const namingPath = path.join(
+    __dirname,
+    '..',
+    '..',
+    'protos',
+    'naming_service.proto',
+  );
+  const namingDef = protoLoader.loadSync(namingPath, {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true,
+  });
+  const namingProto = grpc.loadPackageDefinition(namingDef).namingservice;
+
+  const namingClient = new namingProto.NamingService(
+    'localhost:50050',
+    grpc.credentials.createInsecure(),
+  );
+
+  const myInfo = {
+    serviceName: 'ResourceAccessService',
+    host: 'localhost',
+    port: 50052,
+    registeredAt: new Date().toISOString(),
+  };
+
+  namingClient.Register(myInfo, (err, reply) => {
+    if (err) {
+      console.error('Could not register with naming service:', err.message);
+      return;
+    }
+    console.log('Registered with naming service:', reply.message);
+  });
+}
+
 // set up the server
 const server = new grpc.Server();
 
@@ -86,5 +125,6 @@ server.bindAsync(
   grpc.ServerCredentials.createInsecure(),
   () => {
     console.log('Resource Access service running on port 50052');
+    registerWithNamingService();
   },
 );
