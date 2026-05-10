@@ -21,6 +21,17 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 
 const safetyProto = grpc.loadPackageDefinition(packageDefinition).safetymonitor;
 
+// thiss must match the token the gui sends with every call
+const AUTH_TOKEN = 'she-demo-token-2026';
+
+// pull the auth token out of the metadata and check it
+function checkAuth(call) {
+  const token = call.metadata.get('auth-token')[0];
+  const userId = call.metadata.get('user-id')[0];
+  console.log('Auth check - user:', userId, 'token ok:', token === AUTH_TOKEN);
+  return token === AUTH_TOKEN;
+}
+
 // fake safety data for some zones
 // in real circumstances then this would come from a database or sensor feed
 const zoneData = {
@@ -43,6 +54,13 @@ const alertTemplates = [
 // CheckLocationSafety
 // looks up the safety level for a zone and returns the current status
 function checkLocationSafety(call, callback) {
+  if (!checkAuth(call)) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: 'Invalid or missing auth token',
+    });
+  }
+
   const { locationId, userId } = call.request;
 
   // validate required fields
@@ -77,6 +95,14 @@ function checkLocationSafety(call, callback) {
 // keeps pushing alerts to the client at intervals
 // only sends ones at or above the severity threshold
 function streamSafetyAlerts(call) {
+  if (!checkAuth(call)) {
+    call.destroy({
+      code: grpc.status.UNAUTHENTICATED,
+      details: 'Invalid or missing auth token',
+    });
+    return;
+  }
+
   const { regionId, severityThreshold } = call.request;
   console.log(
     'Streaming alerts for',
