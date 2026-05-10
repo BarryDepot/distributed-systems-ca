@@ -22,12 +22,28 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 const resourceProto =
   grpc.loadPackageDefinition(packageDefinition).resourceaccess;
 
+// must match the token the gui sends
+const AUTH_TOKEN = 'she-demo-token-2026';
+
+function checkAuth(call) {
+  const token = call.metadata.get('auth-token')[0];
+  const userId = call.metadata.get('user-id')[0];
+  console.log('Auth check - user:', userId, 'token ok:', token === AUTH_TOKEN);
+  return token === AUTH_TOKEN;
+}
+
 // allowed resource categories
 const validCategories = ['legal', 'health', 'education'];
 
 // UploadResourceRequests
 // user sends multiple help requests - server replies once at the end
 function uploadResourceRequests(call, callback) {
+  if (!checkAuth(call)) {
+    return callback({
+      code: grpc.status.UNAUTHENTICATED,
+      message: 'Invalid or missing auth token',
+    });
+  }
   let total = 0;
   let processed = 0;
   let invalid = 0;

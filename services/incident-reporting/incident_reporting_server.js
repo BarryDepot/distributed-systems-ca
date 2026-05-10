@@ -22,6 +22,16 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 const incidentProto =
   grpc.loadPackageDefinition(packageDefinition).incidentreporting;
 
+// must match the token the gui sends
+const AUTH_TOKEN = 'she-demo-token-2026';
+
+function checkAuth(call) {
+  const token = call.metadata.get('auth-token')[0];
+  const userId = call.metadata.get('user-id')[0];
+  console.log('Auth check - user:', userId, 'token ok:', token === AUTH_TOKEN);
+  return token === AUTH_TOKEN;
+}
+
 // canned officer responses depending on what the user sent
 function officerReply(userMessage) {
   const type = (userMessage.messageType || '').toLowerCase();
@@ -67,10 +77,17 @@ function officerReply(userMessage) {
 // each time the user sends a message, the officer replies
 // the chat stays open until the user closes their side
 function reportIncident(call) {
+  if (!checkAuth(call)) {
+    call.destroy({
+      code: grpc.status.UNAUTHENTICATED,
+      details: 'Invalid or missing auth token',
+    });
+    return;
+  }
+
   console.log('ReportIncident - new chat session opened');
 
   call.on('data', (userMsg) => {
-    // validate required fields
     if (!userMsg.senderId || !userMsg.content) {
       console.log('  invalid message - missing fields');
       call.write({
@@ -83,7 +100,6 @@ function reportIncident(call) {
     }
 
     console.log('User:', userMsg.content);
-
     const reply = officerReply(userMsg);
     console.log('Officer:', reply.content);
     call.write(reply);
